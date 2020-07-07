@@ -1,4 +1,4 @@
-using Core
+import Base: zero, one, +, -, *, /, //, ^, inv, iszero, isone
 
 struct NTL_INIT_zz_p end # type for init
 const _init_zz_p=NTL_INIT_zz_p()
@@ -88,16 +88,13 @@ function add!(z::zz_p{T} , x::zz_p{T}, y::zz_p{T}) where {T}
     z._rep = AddMod(x._rep,y._rep, T)
     return z
 end
-function +(x::zz_p{T}, y::zz_p{T}) where {T}
+function add(x::zz_p{T}, y::zz_p{T}) where {T}
     Z=AddMod(x._rep,y._rep, T)
     return zz_p{T}(Z, _init_zz_p)
 end
-function +(x::zz_p{T}, Y::Int) where {T}
-    return x+convert(zz_p{T},Y)
-end
-function +(X::Int, y::zz_p{T}) where {T}
-    return convert(zz_p{T},X)+ y
-end
++(x::zz_p{T}, y::zz_p{T}) where {T} = add(x,y) 
++(x::zz_p{T}, Y::Int) where {T} = add(x,convert(zz_p{T},Y))
++(X::Int, y::zz_p{T}) where {T} = add(convert(zz_p{T},X),y)
 
 
 ## sub
@@ -112,16 +109,13 @@ function sub!(z::zz_p{T} , x::zz_p{T}, y::zz_p{T}) where {T}
     z._rep = SubMod(x._rep,y._rep, T)
     return z
 end
-function -(x::zz_p{T}, y::zz_p{T}) where {T}
+function sub(x::zz_p{T}, y::zz_p{T}) where {T}
     Z=SubMod(x._rep,y._rep, T)
     return zz_p{T}(Z, _init_zz_p)
 end
-function -(x::zz_p{T}, Y::Int) where {T}
-    return x-convert(zz_p{T},Y)
-end
-function +(X::Int, y::zz_p{T}) where {T}
-    return convert(zz_p{T},X)-y
-end
+-(x::zz_p{T}, y::zz_p{T}) where {T} = sub(x,y)
+-(x::zz_p{T}, Y::Int) where {T} = sub(x,convert(zz_p{T},Y))
+-(X::Int, y::zz_p{T}) where {T} = sub(convert(zz_p{T},X),y)
 
 ## negate
 # x = -a
@@ -133,10 +127,11 @@ function negate!(x::zz_p{T}, a::zz_p{T}) where {T}
     x._rep=NegateMod(a._rep,T)
     return x
 end
-function -(a::zz_p{T}) where {T}
+function negate(a::zz_p{T}) where {T} 
     Z = NegateMod(a._rep,T)
     return zz_p(Z, _init_zz_p)
 end
+-(a::zz_p{T}) where {T} = negate(a)
 
 ## mul
 @inline function MulMod(a::Int, b::Int, n::Int)::Int
@@ -146,16 +141,16 @@ function mul!(z::zz_p{T} , x::zz_p{T}, y::zz_p{T}) where {T}
     z._rep = MulMod(x._rep,y._rep, T)
     return z
 end
-function *(x::zz_p{T}, y::zz_p{T}) where {T}
+function mul(x::zz_p{T}, y::zz_p{T}) where {T}
     Z=MulMod(x._rep,y._rep, T)
     return zz_p{T}(Z, _init_zz_p)
 end
-function *(x::zz_p{T}, Y::Int) where {T}
-    return x*convert(zz_p{T},Y)
-end
-function *(X::Int, y::zz_p{T}) where {T}
-    return convert(zz_p{T},X)*y
-end
+
+*(x::zz_p{T}, y::zz_p{T}) where {T} = mul(x,y)
+*(x::zz_p{T}, Y::Int) where {T} = mul(x, convert(zz_p{T},Y))
+*(X::Int, y::zz_p{T}) where {T} = mul(convert(zz_p{T},X), y)
+
+
 ## inv 
 # 1/a mod n
 function InvMod(a::Int, n::Int)::Int
@@ -181,16 +176,13 @@ function div!(z::zz_p{T} , x::zz_p{T}, y::zz_p{T}) where {T}
     z._rep = MulMod(x._rep, InvMod(y._rep, T), T)
     return z
 end
-function /(x::zz_p{T}, y::zz_p{T}) where {T}
+function div(x::zz_p{T}, y::zz_p{T}) where {T}
     Z=MulMod(x._rep, InvMod(y._rep, T), T)
     return zz_p{T}(Z, _init_zz_p)
 end
-function /(x::zz_p{T}, Y::Int) where {T}
-    return x/convert(zz_p{T},Y)
-end
-function /(X::Int, y::zz_p{T}) where {T}
-    return convert(zz_p{T},X)/y
-end
+/(x::zz_p{T}, y::zz_p{T}) where {T} = div(x,y)
+/(x::zz_p{T}, Y::Int) where {T} = div(x, convert(zz_p{T},Y))
+/(X::Int, y::zz_p{T}) where {T} = div(convert(zz_p{T},X), y)
 
 ## comparison
 @inline function iszero(x::zz_p{T}) where {T}
@@ -220,8 +212,8 @@ function PowerMod(a::Int, e::Int , n::Int)
    end
     x::Int = 1;
     y::Int = a;
-    while (e)
-        if (e & 1) 
+    while (e != 0)
+        if (e & 1) != 0 
                 x = MulMod(x, y, n)
         end
         y = MulMod(y, y, n);
@@ -242,6 +234,4 @@ end
     return zz_p{T}(Z, _init_zz_p)
 end
 
-@inline function ^(x::zz_p{T}, e::Int) where {T}
-    return power(x,e)
-end
+^(x::zz_p{T}, e::Int) where {T} = power(x,e)
