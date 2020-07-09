@@ -1,4 +1,4 @@
-import Base: zero, one, +, -, *, /, //, ^, inv, iszero, isone
+import Base: zero, one, +, -, *, /, //, ^,==, inv, iszero, isone,convert, show
 
 struct NTL_INIT_zz_p end # type for init
 const _init_zz_p=NTL_INIT_zz_p()
@@ -129,7 +129,7 @@ function negate!(x::zz_p{T}, a::zz_p{T}) where {T}
 end
 function negate(a::zz_p{T}) where {T} 
     Z = NegateMod(a._rep,T)
-    return zz_p(Z, _init_zz_p)
+    return zz_p{T}(Z, _init_zz_p)
 end
 -(a::zz_p{T}) where {T} = negate(a)
 
@@ -222,6 +222,9 @@ function PowerMod(a::Int, e::Int , n::Int)
    return x;
 end
 
+## show
+
+show(io::IO, x::zz_p{T}) where {T} = print("zz_",T, "(", x._rep, ")") 
 
 
 @inline function power!(z::zz_p{T}, x::zz_p{T}, e::Int) where {T}
@@ -235,3 +238,5 @@ end
 end
 
 ^(x::zz_p{T}, e::Int) where {T} = power(x,e)
+
+vec_zz_p{T} = Array{zz_p{T}, 1} where {T} 
