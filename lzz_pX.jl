@@ -1,15 +1,17 @@
 include("lzz_p.jl")
-import Base: getindex, zero, one
+import Base: setindex!, getindex, zero, one, copy,>>, <<
 
 
 ## vector of zz_p{T}
-vec_zz_p{T} = Vector{zz_p{T}} where {T} 
+const vec_zz_p{T} = Vector{zz_p{T}} where {T} 
 
 function convert(::Type{vec_zz_p{T}}, v::Vector{Int}) where {T}
     return map(zz_p{T}, v)
 end
 
 ## polynomial with coefficients in zz_p{T}
+struct NTL_INIT_zz_pX end
+ntl_init_zz_pX = NTL_INIT_zz_pX()
 
 mutable struct zz_pX{T}
     _rep::vec_zz_p{T}
@@ -30,6 +32,12 @@ mutable struct zz_pX{T}
     function zz_pX{T}(v::Array{Int64,1}) where {T}
         p=new(v)
         normalize!(p)
+    end
+    function zz_pX{T}(v::Array{Int64,1},::NTL_INIT_zz_pX) where {T}
+        new(v)
+    end
+    function zz_pX{T}(v::vec_zz_p{T},::NTL_INIT_zz_pX) where {T}
+        new(v)
     end
 end
 
@@ -55,15 +63,15 @@ end
 function normalize!(p::zz_pX{T})::zz_pX{T} where {T}
     r = p._rep
     m= length(r)
-    while (m > 1) & iszero(r[m])
+    while (m > 1) && iszero(r[m])
         pop!(r)
         m -= 1
     end
     return p
 end
 
-function deg(p::zz_pX{T}) where {T}
-    return length(p._rep) - 1
+@inline function deg(p::zz_pX{T}) where {T}
+    return length(p._rep)-1
 end
 function coeff(p::zz_pX{T}, i::Int) where {T}
     if i < 0
@@ -76,14 +84,27 @@ function coeff(p::zz_pX{T}, i::Int) where {T}
 end
 
 function zero(::Type{zz_pX{T}}) where {T}
-    return zz_p{T}(0)
+    return zz_pX{T}(0)
 end
 function one(::Type{zz_pX{T}}) where {T}
-    return zz_p{T}(1)
+    return zz_pX{T}(1)
+end
+function setX(::Type{zz_pX{T}}) where {T}
+    zz_pX{T}([0,1],ntl_init_zz_pX)
+end
+
+@inline function isX(x::zz_pX{T}) where {T}
+   return (deg(x) == 1) && isone(x._rep[2]) && iszero(x._rep[1]);
+end
+@inline function iszero(x::zz_pX{T}) where {T}
+    return (deg(x)== 0) && iszero(x._rep[1]) 
+end
+@inline function isone(x::zz_pX{T}) where {T}
+    return (deg(x)== 0) && isone(x._rep[1]) 
 end
 
 function GetCoeff!(x::zz_p{T}, p::zz_pX{T}, i::Int) where {T}
-    x = coeff(p,i)
+    x._rep = coeff(p,i)._rep
 end
 function LeadCoeff(p::zz_pX{T}) where {T} 
     p._rep[end] 
@@ -101,20 +122,107 @@ function getindex(p::zz_pX{T}, i::Int) where {T}
     return zero(zz_pX{T})
 end
 
-function setindex!(p::zz_pX{T}, i::Int, x::zz_p{T}) where {T}
+function setindex!(p::zz_pX{T},  x::zz_p{T}, i::Int) where {T}
     if i < 0
         error("setindex!: nagative index")
     end
     m = deg(p)
-    if (i > m) & !(iszero(x)) 
+    if (i > m) && (iszero(x)) 
         return x
     end
-    if i >m
+    if i>m
         z=zeros(zz_p{T},i-m)
         append!(p._rep, z)
-    end
-    setindex!(p._rep, i, x)
+    end 
+    setindex!(p._rep, x, i+1)
     normalize!(p)
 end
 
+setindex!(p::zz_pX{T},  x::Int, i::Int) where {T} = setindex!(p,zz_p{T}(x),i)
 
+@inline function swap!(x::zz_pX{T}, y::zz_pX{T}) where {T}
+    z = x._rep; x._rep = y._rep; y._rep = z
+    nothing
+end
+
+"""
+rand(::Type, d::Int)
+
+generate a random polynomial of degree <= d 
+
+## Example
+julia> P7=zz_pX{7}
+julia> rand(P7, 3)
+
+"""
+function rand(::Type{zz_pX{T}}, d::Int) where {T}
+    if d < 0
+        error("rand: nagative degree")
+    end
+    zz_pX{T}(rand(Int, d+1))
+end
+
+function trunc(p::zz_pX{T}, d::Int) where {T}
+    if d > deg(p)
+        return p
+    else
+        zz_pX{T}(p._rep[1:d])
+    end
+end
+function trunc!(p::zz_pX{T}, d::Int) where {T}
+    if d > deg(p)
+        return p
+    else
+        resize!(p._rep,d)
+    end
+    normalize!(p)
+end
+"""
+RightShift!(p::zz_pX{T}, d::Int)
+p /= x^d
+
+"""
+@inline function RightShift!(p::zz_pX{T}, d::Int) where {T}
+    if d>deg(p)
+        p._rep = [ zero(zz_p{T}) ]
+    else
+        deleteat!(p._rep, 1:d)
+    end
+    return p
+end
+@inline function RightShift(p::zz_pX{T}, d::Int) where {T}
+    if d>deg(p)
+        return zero(zz_pX{T})
+    else
+        return zz_pX{T}(p._rep[1+d:end],ntl_init_zz_pX)
+    end
+ end
+ >>(p::zz_pX{T}, d::Int) where {T} = RightShift(p,d)
+
+"""
+LeftShift!(p::zz_pX{T}, d::Int)
+p *= x^d
+
+"""
+@inline function LeftShift!(p::zz_pX{T}, d::Int) where {T}
+    if (d>0) && !(iszero(p))
+        prepend!(p._rep,zeros(zz_p{T}, d))
+    end
+    return p
+end
+@inline function LeftShift(p::zz_pX{T}, d::Int) where {T}
+    LeftShift!(copy(p),d)
+end
+<<(p::zz_pX{T}, d::Int) where {T} = LeftShift(p,d)
+
+function copy(p::zz_pX{T}) where {T}
+    zz_pX{T}(copy(p._rep), ntl_init_zz_pX)
+end
+
+==(a::zz_pX{T}, b::zz_pX{T}) where {T} = a._rep == b._rep
+
+@inline function diff(a::zz_pX{T}) where {T} 
+    b=a>>1
+    b._rep.*=collect(1:length(b._rep))
+    normalize!(b)
+end
