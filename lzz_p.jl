@@ -1,4 +1,4 @@
-import Base: zero, one, +, -, *, /, //, ^,==, inv, iszero, isone,convert, show
+import Base: zero, one, +, -, *, /, //, ^,==, inv, iszero, isone,convert, show,rand
 
 struct NTL_INIT_zz_p end # type for init
 const _init_zz_p=NTL_INIT_zz_p()
@@ -53,10 +53,8 @@ end
 function modulus(::Type{zz_p{T}}) where {T}
     return T
 end
-function swap!(x::zz_p{T}, y::zz_p{T}) where {T}
-    z = x._rep;
-    x._rep = y._rep
-    y._rep =z
+@inline function swap!(x::zz_p{T}, y::zz_p{T}) where {T}
+    z = x._rep;x._rep = y._rep; y._rep =z; 
     nothing
 end
 
