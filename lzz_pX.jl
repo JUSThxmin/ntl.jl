@@ -226,3 +226,9 @@ end
     b._rep.*=collect(1:length(b._rep))
     normalize!(b)
 end
+
+
+# ***************************************************************
+#                          Addition
+# ***************************************************************
+add(x::zz_pX{T}, y::zz_pX{T}) where {T}= zz_pX{T}(x._rep + y._rep,ntl_init_zz_pX)
