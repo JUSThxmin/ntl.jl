@@ -41,6 +41,10 @@ mutable struct zz_pX{T}
     end
 end
 
+
+convert(::Type{zz_pX{T}}, X::Int) where {T} = zz_pX{T}(X)
+convert(::Type{zz_pX{T}}, X::zz_p{T}) where {T} = zz_pX{T}(X)
+
 """
 show(io::IO, p::zz_pX{T}, x::Symbol) 
 
@@ -231,4 +235,26 @@ end
 # ***************************************************************
 #                          Addition
 # ***************************************************************
-add(x::zz_pX{T}, y::zz_pX{T}) where {T}= zz_pX{T}(x._rep + y._rep,ntl_init_zz_pX)
+@inline function add(x::zz_pX{T}, y::zz_pX{T}) where {T}
+    dx =length(x._rep); dy = length(y._rep)
+    if dx>dy
+        _add_large(x,dx,y, dy)
+    elseif dx<dy
+        _add_large(y,dy,x, dx)
+    else
+        _add_equal(x,y)
+    end
+end
+@inline function _add_equal(x::zz_pX{T}, y::zz_pX{T}) where{T}
+    zz_pX{T}(x._rep + y._rep)
+end
+@inline function _add_large(x::zz_pX{T} , dx::Int, y::zz_pX{T}, dy::Int ) where {T}
+    z=append!(x._rep[1:dy]+y._rep, x._rep[dy+1:dx])
+    zz_pX{T}(z, ntl_init_zz_pX)
+end
++(x::zz_pX{T},y::zz_pX{T}) where {T} = add(x, y)
+add(X::zz_p{T},y::zz_pX{T}) where {T} = add(convert(zz_pX{T},X), y)
+add(X::Int,y::zz_pX{T}) where {T} = add(convert(zz_pX{T},X), y)
+add(x::zz_pX{T},Y::zz_p{T}) where {T} = add(x,convert(zz_pX{T},Y))
+add(x::zz_pX{T},Y::Int) where {T} = add(x,convert(zz_pX{T},Y))
+

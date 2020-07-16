@@ -91,8 +91,8 @@ function add(x::zz_p{T}, y::zz_p{T}) where {T}
     return zz_p{T}(Z, _init_zz_p)
 end
 +(x::zz_p{T}, y::zz_p{T}) where {T} = add(x,y) 
-+(x::zz_p{T}, Y::Int) where {T} = add(x,convert(zz_p{T},Y))
-+(X::Int, y::zz_p{T}) where {T} = add(convert(zz_p{T},X),y)
+add(x::zz_p{T}, Y::Int) where {T} = add(x,convert(zz_p{T},Y))
+add(X::Int, y::zz_p{T}) where {T} = add(convert(zz_p{T},X),y)
 
 
 ## sub
